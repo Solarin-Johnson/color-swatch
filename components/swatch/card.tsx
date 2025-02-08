@@ -1,7 +1,12 @@
 import { useThemeColor } from "@/hooks/useThemeColor";
 import React from "react";
-import { View, StyleSheet, TouchableOpacity, Pressable } from "react-native";
-import * as Haptics from "expo-haptics";
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Platform,
+  PixelRatio,
+} from "react-native";
 
 interface SwatchProps {
   colors: string[];
@@ -13,61 +18,67 @@ interface SwatchProps {
 const SwatchCard: React.FC<SwatchProps> = ({
   colors,
   onPress = () => {},
-  size = 50,
+  size = 10,
   stop = 3,
 }) => {
   const backgroundColor = useThemeColor({}, "foreground");
+  const isWeb = Platform.OS === "web";
+  const _size = PixelRatio.getPixelSizeForLayoutSize(size) + 28;
 
-  const borderRadiusConfig = (index: number) => ({
-    borderRadius: size / 15,
-    ...(colors.length > 1 &&
-      index === colors.length - stop && {
-        borderBottomLeftRadius: size / 5,
-        borderBottomRightRadius: size / 5,
+  const borderRadiusConfig = (index: number) => {
+    const baseRadius = _size / 15;
+    const largeRadius = _size / 5;
+    const isFirst = index === colors.length - 1;
+    const isLast = index === colors.length - stop;
+
+    return {
+      borderRadius: baseRadius,
+      ...(colors.length > 1 && {
+        ...(isLast && {
+          borderBottomLeftRadius: largeRadius,
+          borderBottomRightRadius: largeRadius,
+        }),
+        ...(isFirst && {
+          borderTopLeftRadius: largeRadius,
+          borderTopRightRadius: largeRadius,
+        }),
       }),
-    ...(colors.length > 1 &&
-      index === colors.length - 1 && {
-        borderTopLeftRadius: size / 5,
-        borderTopRightRadius: size / 5,
-      }),
-  });
+    };
+  };
+
+  const CardBox = isWeb ? View : Pressable;
 
   return (
-    <View
+    <CardBox
+      onPress={onPress}
       style={[
         styles.container,
         {
           backgroundColor,
-          padding: size / 14,
-          gap: size / 14,
-          borderRadius: size / 15 + size / 5,
+          padding: _size / 16,
+          gap: _size / 16,
+          borderRadius: _size / 15 + _size / 5,
         },
       ]}
     >
       {colors.map(
         (color, index) =>
           index > colors.length - stop - 1 && (
-            <Pressable
-              onPress={onPress}
-              // onPressIn={
-              //   process.env.EXPO_OS === "ios"
-              //     ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-              //     : undefined
-              // }
+            <View
               key={index}
               style={[
                 styles.swatch,
                 {
                   backgroundColor: color,
-                  width: size,
-                  height: size * 1.25,
+                  width: _size,
+                  height: _size * 1.25,
                   ...borderRadiusConfig(index),
                 },
               ]}
             />
           )
       )}
-    </View>
+    </CardBox>
   );
 };
 

@@ -1,19 +1,12 @@
 import React, { Fragment, useEffect } from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import SwatchCard from "./card";
-import {
-  Gesture,
-  GestureDetector,
-  Pressable,
-} from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   interpolate,
-  useAnimatedReaction,
   useAnimatedStyle,
-  useDerivedValue,
   useSharedValue,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
 
 interface SwatchProps {
@@ -22,48 +15,48 @@ interface SwatchProps {
   size?: number;
 }
 
+const CONFIG = {
+  damping: 14,
+  mass: 1,
+};
+
 const Swatch: React.FC<SwatchProps> = ({ colors, onPress, size }) => {
   const pressed = useSharedValue<boolean>(false);
   const offset = useSharedValue<number>(0);
   const opened = useSharedValue<boolean>(false);
   const isWeb = Platform.OS === "web";
 
+  const handlePress = () => {
+    if (opened.value) {
+      offset.value = withSpring(0, CONFIG);
+    } else {
+      offset.value = withSpring(90, CONFIG);
+    }
+    opened.value = !opened.value;
+  };
+
   const pan = Gesture.Pan()
     .onBegin(() => {
       pressed.value = true;
     })
-    .onChange((event) => {
-      if (!opened.value) {
-        offset.value = (event.translationX + event.translationY) / 3.5;
-      } else {
-        offset.value = 90 + (event.translationX + event.translationY) / 3.5;
-      }
+    .onChange(({ translationX, translationY }) => {
+      const translation = (translationX + translationY) / 3.5;
+      offset.value = opened.value ? 90 + translation : translation;
     })
-    .onFinalize((event) => {
-      const velocity = (event.velocityX + event.velocityY) / 7;
-      offset.value = withSpring(offset.value + velocity * 0.2, {
-        velocity,
-        damping: 10,
-      });
-      const factor = isWeb ? offset.value < 80 : offset.value > 80;
-      if (factor) {
-        opened.value = true;
-        offset.value = withSpring(90);
-      } else {
-        opened.value = false;
-        offset.value = withSpring(0);
-      }
+    .onFinalize(({ velocityX, velocityY }) => {
+      const velocity = (velocityX + velocityY) / 7;
+      const shouldOpen = offset.value > 75;
+
+      opened.value = shouldOpen;
+      offset.value = withSpring(shouldOpen ? 90 : 0, { ...CONFIG, velocity });
       pressed.value = false;
     });
 
-  const handlePress = () => {
-    if (opened.value) {
-      offset.value = withSpring(0);
-    } else {
-      offset.value = withSpring(90);
-    }
-    opened.value = !opened.value;
-  };
+  const tap = Gesture.Tap()
+    .onEnd(() => {
+      isWeb && handlePress();
+    })
+    .simultaneousWithExternalGesture(pan);
 
   const getAnimatedStyle = (index: number) => {
     return useAnimatedStyle(() => {
@@ -92,7 +85,7 @@ const Swatch: React.FC<SwatchProps> = ({ colors, onPress, size }) => {
             style={[styles.card, getAnimatedStyle(index)]}
             key={index}
           >
-            <GestureDetector gesture={pan}>
+            <GestureDetector gesture={Gesture.Race(pan, tap)}>
               <Wrapper>
                 <SwatchCard
                   colors={colorSet}
@@ -118,10 +111,7 @@ const styles = StyleSheet.create({
     bottom: 64,
     left: 32,
   },
-  card: {
-    backgroundColor: "red",
-    // width: 50,
-  },
+  card: {},
 });
 
 export default Swatch;
