@@ -1,6 +1,7 @@
 import { useThemeColor } from "@/hooks/useThemeColor";
 import React from "react";
 import { View, StyleSheet, TouchableOpacity, Pressable } from "react-native";
+import * as Haptics from "expo-haptics";
 
 interface SwatchProps {
   colors: string[];
@@ -48,6 +49,11 @@ const SwatchCard: React.FC<SwatchProps> = ({
           index > colors.length - stop - 1 && (
             <Pressable
               onPress={onPress}
+              // onPressIn={
+              //   process.env.EXPO_OS === "ios"
+              //     ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+              //     : undefined
+              // }
               key={index}
               style={[
                 styles.swatch,
@@ -73,7 +79,9 @@ export const styles = StyleSheet.create({
     bottom: -12,
     flexDirection: "column-reverse",
   },
-  swatch: {},
+  swatch: {
+    // transformOrigin: [0, 10, 0],
+  },
 });
 
 export default SwatchCard;
